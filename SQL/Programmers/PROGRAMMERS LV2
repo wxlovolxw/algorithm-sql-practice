@@ -1,0 +1,277 @@
+PROGRAMMERS LV2
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+가격이 제일 비싼 식품의 정보 출력하기
+
+SELECT * FROM FOOD_PRODUCT
+ORDER BY PRICE DESC LIMIT 1
+
+내림차순으로 한 뒤 1줄만 출력하면 된다.
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+카테고리 별 상품 개수 구하기
+
+PRODUCT 코드에서 앞에 두자리가 상품코드이기 때문에 LEFT를 통해 문자열을 2문자만 남겨놓은 상태에서 COUNT를 통해 상품 수를 세어주면 될 것 같다.
+
+SELECT LEFT(PRODUCT_CODE,2) AS CATEGORY, COUNT(LEFT(PRODUCT_CODE,2)) AS PRODUCTS
+FROM PRODUCT
+GROUP BY CATEGORY
+
+COUNT와 GROUPBY를 쓰면 카테고리 별로 카운트를 해주는 것 같다.
+
+SELECT LEFT(PRODUCT_CODE,2) AS CATEGORY, COUNT(*) AS PRODUCTS
+FROM PRODUCT
+GROUP BY CATEGORY
+ORDER BY CATEGORY
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+조건에 맞는 아이템들의 가격의 총합 구하기
+
+SELECT SUM(PRICE) AS TOTAL_PRICE
+FROM ITEM_INFO
+WHERE RARITY = 'LEGEND'
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+진료과별 총 예약 횟수 출력하기
+
+SELECT MCDP_CD AS 진료과코드, COUNT(*) AS 5월예약건수
+FROM APPOINTMENT
+WHERE APNT_YMD LIKE '2022-05%'
+GROUP BY MCDP_CD
+ORDER BY 5월예약건수, 진료과코드
+
+- GROUP BY를 통해 새로운 컬럼 생성후에, 이 새로운 컬럼을 통해서도 ORDER BY로 정렬할 수 있다.
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+자동차 종류 별 특정 옵션이 포함된 자동차 수 구하기
+
+SELECT CAR_TYPE, COUNT(*) AS CARS
+FROM CAR_RENTAL_COMPANY_CAR
+WHERE OPTIONS REGEXP '통풍시트|열선시트|가죽시트'
+GROUP BY CAR_TYPE
+ORDER BY CAR_TYPE
+
+- 정규식을 사용했다. OPTIONS의 항목들 중에 해당 항목이 포함되어있는지를 확인한다. 한개라면 IN/EXISTS를 사용하면 되지만 여러 항목이므로 정규식을 사용하였다.
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+조건에 맞는 도서와 저자 리스트 출력하기
+
+SELECT B.BOOK_ID, A.AUTHOR_NAME, DATE_FORMAT(B.PUBLISHED_DATE,'%Y-%m-%d') AS PUBLISHED_DATE
+FROM BOOK AS B
+LEFT JOIN AUTHOR AS A ON A.AUTHOR_ID = B.AUTHOR_ID
+WHERE B.CATEGORY = '경제'
+ORDER BY PUBLISHED_DATE
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+상품 별 오프라인 매출 구하기
+
+SELECT PR.PRODUCT_CODE, SUM(SALES_AMOUNT) * PR.PRICE AS SALES
+FROM OFFLINE_SALE AS A_S
+LEFT JOIN PRODUCT AS PR ON PR.PRODUCT_ID = A_S.PRODUCT_ID
+GROUP BY PR.PRODUCT_CODE
+ORDER BY SALES DESC, PR.PRODUCT_CODE
+
+- 총 판매액을 구할 때, SALE_ID 별로 양이 다르기 때문에 SUM을 통해 그 총양을 구하는 것이 중요하다.
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+성분으로 구분한 아이스크림 총 주문량
+
+SELECT ICE.INGREDIENT_TYPE, SUM(FH.TOTAL_ORDER) AS TOTAL_ORDER
+FROM FIRST_HALF AS FH
+LEFT JOIN ICECREAM_INFO AS ICE ON FH.FLAVOR = ICE.FLAVOR
+GROUP BY ICE.INGREDIENT_TYPE 
+ORDER BY TOTAL_ORDER
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+3월에 태어난 여성 회원 목록 출력하기
+
+SELECT MEMBER_ID, MEMBER_NAME, GENDER, DATE_FORMAT(DATE_OF_BIRTH, '%Y-%m-%d') AS DATE_OF_BIRTH
+FROM MEMBER_PROFILE
+WHERE DATE_OF_BIRTH LIKE '%-03-%' AND TLNO IS NOT NULL AND GENDER = 'W'
+ORDER BY MEMBER_ID
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+가격대 별 상품 개수 구하기
+
+가격대별로 카테고리화를 하기 위해 사용할 방법을 찾아보자.
+나는 몫을 이용해 카테고리화 할 수 있을 것 같다.
+
+SELECT FLOOR(PRICE / 10000) * 10000 AS PRICE_GROUP, COUNT(*) AS PRODUCTS
+FROM PRODUCT
+GROUP BY PRICE_GROUP
+ORDER BY PRICE_GROUP
+
+FLOOR을 통해 소숫점 아래 수를 버릴 수 있다.
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+물고기 종류 별 잡은 수 구하기
+
+SELECT COUNT(*) AS FISH_COUNT, FN.FISH_NAME
+FROM FISH_INFO AS FI
+LEFT JOIN FISH_NAME_INFO AS FN ON FI.FISH_TYPE = FN.FISH_TYPE
+GROUP BY FN.FISH_NAME
+ORDER BY FISH_COUNT DESC
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+연도 별 평균 미세먼지 농도 조회하기
+
+SELECT YEAR(YM) AS YEAR, ROUND(AVG(PM_VAL1),2) AS PM10, ROUND(AVG(PM_VAL2),2) AS 'PM2.5'
+FROM AIR_POLLUTION
+WHERE LOCATION2 = '수원'
+GROUP BY YEAR
+ORDER BY YEAR
+
+- 처음에 YM 에서 연도를 받을때 문자열을 나누는 LEFT를 통해 나누려고 했는데 타입이 DATE이기 때문에 YEAR(YM)으로 변경해 주었다.
+그리고 연도별로 평균값을 조회하기 위해 GROUP BY 와 AVG를 사용하였다.
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+ROOT 아이템 구하기
+
+SELECT II.ITEM_ID, II.ITEM_NAME 
+FROM ITEM_INFO AS II 
+JOIN ITEM_TREE AS IT ON II.ITEM_ID = IT.ITEM_ID
+WHERE IT.PARENT_ITEM_ID IS NULL
+ORDER BY II.ITEM_ID
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+월별 잡은 물고기 수 구하기
+
+SELECT COUNT(*) AS FISH_COUNT, MONTH(TIME) AS MONTH
+FROM FISH_INFO
+GROUP BY MONTH
+ORDER BY MONTH
+
+- YEAR를 통해 연도를 출력할때와 마찬가지로 MONTH를 통해 월을 출력할 수 있다.
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+조건에 부합하는 중고거래 상태 조회하기
+
+SELECT BOARD_ID, WRITER_ID, TITLE, PRICE, 
+    CASE WHEN STATUS = 'SALE' THEN '판매중'
+    WHEN STATUS = 'DONE' THEN '거래완료'
+    ELSE '예약중'
+    END AS 'STATUS'
+FROM USED_GOODS_BOARD
+WHERE DATE_FORMAT(CREATED_DATE,'%Y-%m-%d') = '2022-10-05'
+ORDER BY BOARD_ID DESC
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+재구매가 일어난 상품과 회원 리스트 구하기
+
+SELECT USER_ID, PRODUCT_ID
+FROM ONLINE_SALE
+GROUP BY USER_ID, PRODUCT_ID
+HAVING COUNT(*) >= 2
+ORDER BY USER_ID, PRODUCT_ID DESC
+
+- HAVING절을 통해서 GROUP BY후의 조건을 설정할 수 있다.
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+노선별 평균 역 사이 거리 조회하기
+
+SELECT ROUTE, CONCAT(ROUND(SUM(D_BETWEEN_DIST),1),'km') AS TOTAL_DISTANCE, CONCAT(ROUND(AVG(D_BETWEEN_DIST),2),'km') AS AVERAGE_DISTANCE
+FROM SUBWAY_DISTANCE
+GROUP BY ROUTE
+ORDER BY SUM(D_BETWEEN_DIST) DESC
+
+- 문제의 조건에서 총 누계거리를 기준으로 내림차순 하라고 했는데, 만약 ORDER BY TOTAL_DISTANCE로 설정하게 되면 STR형으로 받게 되어 올바른 순서로 조회되지 않는다. 따라서 거리형으로 조회하기 위해 SUM(D_BETWEEN_DIST)로 설정하면 된다.
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+업그레이드 된 아이템 구하기
+
+현재 아이템의 레어도가 RARE인 조건을 위해서는 ITEM_INFO에서 WHERE = RARITY = 'RARE'을 사용해야 한다.
+그리고 현재 레어도가 RARE인 아이템이 업그레이드를 통해 도달할수 있는 아이템을 찾는 것이 중요하다.
+현재 아이템의 PARENT_ITEM_ID에 해당하는 아이템의 레어도가 RARE인지 확인하면 된다.
+
+SELECT IT.ITEM_ID
+FROM ITEM_TREE AS IT
+LEFT JOIN ITEM_INFO AS II ON IT.PARENT_ITEM_ID = II.ITEM_ID
+WHERE II.RARITY = 'RARE'
+
+-의 형태로 서브쿼리를 생성. 1234만 출력
+
+SELECT ITEM_ID, ITEM_NAME, RARITY
+FROM ITEM_INFO
+WHERE ITEM_ID IN (SELECT IT.ITEM_ID
+    FROM ITEM_TREE AS IT
+    LEFT JOIN ITEM_INFO AS II ON IT.PARENT_ITEM_ID = II.ITEM_ID
+    WHERE II.RARITY = 'RARE')
+ORDER BY ITEM_ID DESC
+
+- 서브쿼리를 통해 1234만 받아서 해당하는 값들의 ID만 출력하면 되도록 코드를 짰다.
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+조건에 맞는 개발자 찾기
+
+SKILL_CODE와 CODE를 모두 2진수로 바꾸어 분해 해야 한다. 예를 들어 SKILL_CODERK 400이라면 110010000 이 된다. 해서 256 128 16의 스킬을 가진 것이 되므로 해당 기술들을 가지고 있다는 뜻이 된다.
+
+비트 연산자를 사용하여 해결해야 하는 듯 하다. 이진수 AND에 해당하는 &를 사용 하면 된다.
+
+SELECT DP.ID, DP.EMAIL, DP.FIRST_NAME, DP.LAST_NAME
+FROM DEVELOPERS AS DP
+LEFT JOIN SKILLCODES AS SC ON DP.SKILL_CODE & SC.CODE
+WHERE SC.NAME IN ('C#', 'Python')
+ORDER BY ID
+
+- 먼저 두 테이블을 JOIN 하기 위한 KEY로 CODE를 사용하는데 이때 각각 2진 BINARY CODE로 변형시켜줘야 하는데, 자동으로 2진 연산을 해주는 & 연산자를 통해서
+겹치는 값이 존재한다면 연결이 된다.
+-> 좀 더 자세하게 공부 해보면 좋을 것 같다.
+조건이 TRUE여야 하므로 모두 1값을 갖을때 를 키로 연결하는 것 같다.
+
+- 그리고 JOIN 했을 때, 한명이 두 스킬을 모두 가지고 있는경우 두개의 값으로 출력되므로 DISTINCT를 통해 중복을 제거해 주면 된다.
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+SELECT YEAR(DIFFERENTIATION_DATE) AS YEAR, MAX(SIZE_OF_COLONY) AS MAX_SIZE
+FROM ECOLI_DATA 
+GROUP BY YEAR
+
+를 통해 연도별로 그룹화 하여 맥시멈값을 출력하는 테이블을 생성하여 JOIN 하면 될 듯 하다.
+
+SELECT YEAR(A.DIFFERENTIATION_DATE) AS YEAR, B.MAX_SIZE - A.SIZE_OF_COLONY AS YEAR_DEV, A.ID
+FROM ECOLI_DATA AS A
+JOIN (SELECT YEAR(DIFFERENTIATION_DATE) AS YEAR, MAX(SIZE_OF_COLONY) AS MAX_SIZE
+    FROM ECOLI_DATA 
+    GROUP BY YEAR) AS B 
+ON YEAR(A.DIFFERENTIATION_DATE) = B.YEAR
+ORDER BY YEAR, YEAR_DEV
+
+각 연도별 맥시멈값 테이블을 셀프조인하여 어렵지 않게 해결할 수 있었다.
+
+주의할 점은 JOIN에 대한 조건으로 A.YEAR가 아니라 YEAR(A.DIFFERENTIATION_DATE)를 사용했다는 점이 중요한 것 같다.
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+부모의 형질을 모두 가지는 대장균 찾기
+
+SELECT C.ID, C.GENOTYPE, P.GENOTYPE AS PARENT_GENOTYPE
+FROM ECOLI_DATA AS C
+LEFT JOIN ECOLI_DATA AS P ON C.PARENT_ID = P.ID
+WHERE C.GENOTYPE & P.GENOTYPE = P.GENOTYPE
+ORDER BY C.ID
+
+앞선 비트 연산자를 사용하는 방법을 고안하였다.
+
+자식의 GENOTYPE이 모두 부모의 GENOTYPE에 포함되어야 하기 때문에,
+겹치는 GENOTYPE이 부모의 TYPE과 같도록 코드를 설계하였다.
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
