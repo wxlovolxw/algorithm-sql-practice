@@ -1,0 +1,223 @@
+PROGRAMMERS LV1
+
+
+흉부외과 또는 일반외과 의사 목록 출력하기
+
+SELECT DR_NAME, DR_ID, MCDP_CD, date_format(HIRE_YMD, '%Y-%m-%d') 
+FROM DOCTOR
+WHERE MCDP_CD IN ('CS', 'GS')
+ORDER BY HIRE_YMD DESC, DR_NAME
+
+- date_format을 통해서 원하는 형태로 시간을 출력할 수 있다.
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+경기도에 위치한 식품창고 목록 출력하기
+
+SELECT WAREHOUSE_ID, WAREHOUSE_NAME, ADDRESS, 
+    CASE 
+    WHEN FREEZER_YN = 'Y' THEN 'Y'
+    WHEN FREEZER_YN = 'N' THEN 'N'
+    ELSE 'N'
+    END AS FREEZER_YN
+FROM FOOD_WAREHOUSE
+WHERE ADDRESS like '경기%'
+ORDER BY  WAREHOUSE_ID
+
+CASE WHEN을 통해 IF문과 같이 사용했는데 좀 더 편한 방법이 있을 것 같다.
+
+SELECT warehouse_id, warehouse_name, address, IFNULL(freezer_yn, 'N') as freezer_yn
+FROM food_warehouse
+WHERE warehouse_name LIKE '경기%'
+ORDER BY warehouse_id
+
+- IFNULL을 통해 NULL이라면 N으로 변환해주는 방법을 사용하면 좀 더 쉬울 것 같다.
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+나이 정보가 없는 회원 수 구하기
+
+SELECT COUNT(USER_ID) AS USERS
+FROM USER_INFO
+WHERE AGE IS NULL
+
+- IS NULL을 통해서 값이 존재하지 않는 항목 선택 가능
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+가장 비싼 상품 구하기
+
+SELECT MAX(PRICE) AS MAX_PRICE
+FROM PRODUCT
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+강원도에 위치한 생산공장 목록 출력하기
+
+SELECT FACTORY_ID, FACTORY_NAME, ADDRESS
+FROM FOOD_FACTORY
+WHERE ADDRESS LIKE '강원%'
+ORDER BY FACTORY_ID
+
+- 문자열 받을때 LIKE && __의 형태 사용하기
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+조건에 맞는 회원수 구하기
+
+SELECT COUNT(USER_ID) AS USERS
+FROM USER_INFO
+WHERE (AGE BETWEEN 20 AND 29) AND DATE_FORMAT(JOINED, '%Y') = '2021'
+
+- 나이의 상한과 하한이 있을떄 양쪽을 포함하는 BETWEEN을 사용할 수 있고, 연도가 2021일때의 값을 받기 위해 DATE_FORMAT을 사용하였다.
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+인기있는 아이스크림
+
+SELECT FLAVOR
+FROM FIRST_HALF
+ORDER BY TOTAL_ORDER DESC, SHIPMENT_ID
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+12세 이하인 여자 환자 목록 출력하기
+
+SELECT PT_NAME, PT_NO, GEND_CD, AGE, IFNULL(TLNO, 'NONE') AS TLNO
+FROM PATIENT
+WHERE AGE <= 12 AND GEND_CD = 'W'
+ORDER BY AGE DESC, PT_NAME
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+조건에 맞는 도서 리스트 출력하기
+
+SELECT BOOK_ID, DATE_FORMAT(PUBLISHED_DATE, '%Y-%m-%d') AS PUBLISHED_DATE
+FROM BOOK
+WHERE CATEGORY = '인문' AND DATE_FORMAT(PUBLISHED_DATE, '%Y') = '2021'
+ORDER BY PUBLISHED_DATE
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+과일로 만든 아이스크림 고르기
+
+SELECT A.FLAVOR
+FROM FIRST_HALF AS A
+LEFT JOIN ICECREAM_INFO AS B ON A.FLAVOR = B.FLAVOR
+WHERE A.TOTAL_ORDER > 3000 AND B.INGREDIENT_TYPE = 'fruit_based'
+ORDER BY A.TOTAL_ORDER DESC
+
+- JOIN 시에 ON을 통해 키를 연결하는 것에 유의하자
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+특정 옵션이 포함된 자동차 리스트 구하기
+
+SELECT * FROM CAR_RENTAL_COMPANY_CAR
+WHERE OPTIONS LIKE '%네비%'
+ORDER BY CAR_ID DESC
+
+- 문자열 LIKE 할때 _ 와 % 사용
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+잡은 물고기 중 가장 큰 물고기의 길이 구하기
+
+SELECT CONCAT(MAX(LENGTH),'cm') AS MAX_LENGTH
+FROM FISH_INFO
+
+- CONCAT을 통해 문자열 합치기 사용 가능
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+잔챙이 잡은 수 구하기
+
+SELECT COUNT(ID) AS FISH_COUNT
+FROM FISH_INFO
+WHERE LENGTH IS NULL
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Python 개발자 찾기
+
+SELECT ID, EMAIL, FIRST_NAME, LAST_NAME
+FROM DEVELOPER_INFOS
+WHERE 'Python' IN (SKILL_1, SKILL_2, SKILL_3)
+ORDER BY ID
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+한 해에 잡은 물고기 수 구하기
+
+SELECT COUNT(ID) AS FISH_COUNT
+FROM FISH_INFO
+WHERE TIME LIKE '2021%'
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+잡은 물고기의 평균 길이 구하기
+
+SELECT ROUND(AVG(IFNULL(LENGTH,10)),2) AS AVERAGE_LENGTH
+FROM FISH_INFO
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+자동차 대여 기록에서 장기/단기 대여 구분하기
+
+SELECT HISTORY_ID, CAR_ID, 
+    DATE_FORMAT(START_DATE, '%Y-%m-%d') AS START_DATE,
+    DATE_FORMAT(END_DATE, '%Y-%m-%d') AS END_DATE,
+    CASE WHEN DATEDIFF(END_DATE,START_DATE) >= 29 THEN '장기 대여'
+    ELSE '단기 대여'
+    END AS RENT_TYPE
+FROM CAR_RENTAL_COMPANY_RENTAL_HISTORY
+WHERE START_DATE LIKE '2022-09%'
+ORDER BY HISTORY_ID DESC
+
+- '단기 대여'를 '단기대여'로 코드를 짜서 1시간 날렸다..ㅎㅎ
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+가장 큰 물고기 10마리 구하기
+
+SELECT ID, LENGTH
+FROM FISH_INFO
+ORDER BY LENGTH DESC, ID LIMIT 10
+
+- LIMIT을 통해 상위 몇개의 데이터만 출력할 수 있다.
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+조건에 부합하는 중고거래 댓글 조회하기
+
+SELECT A.TITLE, A.BOARD_ID, B.REPLY_ID, B.WRITER_ID, B.CONTENTS, 
+    DATE_FORMAT(B.CREATED_DATE, '%Y-%m-%d') AS CREATED_DATE
+FROM USED_GOODS_BOARD AS A
+JOIN USED_GOODS_REPLY AS B ON A.BOARD_ID = B.BOARD_ID
+WHERE A.CREATED_DATE LIKE '2022-10%'
+ORDER BY B.CREATED_DATE, A.TITLE
+
+- LEFT JOIN을 했을때는 댓글이 없는 항목도 출력됐었다. 문제에서 요구하는 것은 댓글이 없는 항목은 아니였다.
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+특정 형질을 가지는 대장균 찾기
+
+10진수를 2진수로 바꾸어 해당 자릿수가 1인지를 확인 해야 한다.
+id 1 : 1000 (8)
+id 2 : 1111 (15) 8 + 4 + 2 + 1
+id 3 : 0001 (1) 
+id 4 : 1101 (13) 8 + 4 + 1
+
+오른쪽 부터 각각의 1이 의미는 1 2 4 이다.
+2번이 없고 1,3번 형질을 가진 개체를 찾아야 하므로 오른쪽에서 부터 100, 101, 001의 형태인 문자열을 찾으면 된다.
+CONV(GENOTYPE,10,2)
+
+SELECT COUNT(*) AS COUNT
+FROM ECOLI_DATA
+WHERE CONV(GENOTYPE,10,2) LIKE '%100'
+    OR CONV(GENOTYPE,10,2) LIKE '%101'
+    OR CONV(GENOTYPE,10,2) LIKE '%001'
+    OR CONV(GENOTYPE,10,2) = 1
+    
+- 다중 문자열 LIKE를 사용하는 방법으로 정규식을 쓰고 싶었지만, 아직 사용이 미숙하여 OR문을 통해 연결해 주었다.

@@ -1,0 +1,370 @@
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+식품분류별 가장 비싼 식품의 정보 조회하기
+
+SELECT A.CATEGORY, B.MAX_PRICE, A.PRODUCT_NAME
+FROM FOOD_PRODUCT AS A
+JOIN (SELECT CATEGORY, MAX(PRICE) AS MAX_PRICE
+    FROM FOOD_PRODUCT
+    GROUP BY CATEGORY
+    HAVING CATEGORY IN ('과자','국','김치','식용유')) AS B
+ON A.CATEGORY = B.CATEGORY
+WHERE A.PRICE = B.MAX_PRICE
+ORDER BY B.MAX_PRICE DESC
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+5월 식품들의 총매출 조회하기
+
+SELECT A.PRODUCT_ID, B.PRODUCT_NAME, SUM(A.AMOUNT) * B.PRICE AS TOTAL_SALES
+FROM (SELECT * 
+      FROM FOOD_ORDER 
+      WHERE DATE_FORMAT(PRODUCE_DATE, '%Y-%m') = '2022-05') AS A
+JOIN FOOD_PRODUCT AS B
+ON A.PRODUCT_ID = B.PRODUCT_ID
+GROUP BY A.PRODUCT_ID
+ORDER BY TOTAL_SALES DESC, PRODUCT_ID
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+취소되지 않은 진료 예약 조회하기
+
+SELECT A.APNT_NO, B.PT_NAME, A.PT_NO, A.MCDP_CD, C.DR_NAME, A.APNT_YMD
+FROM APPOINTMENT AS A
+JOIN PATIENT  AS B
+ON A.PT_NO = B.PT_NO
+JOIN DOCTOR AS C
+ON A.MDDR_ID = C.DR_ID
+WHERE A.MCDP_CD = 'CS' AND A.APNT_CNCL_YN = 'N' AND DATE_FORMAT(A.APNT_YMD,'%Y-%m-%d') = '2022-04-13'
+ORDER BY APNT_YMD
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+서울에 위치한 식당 목록 출력하기
+
+SELECT B.REST_ID, B.REST_NAME, B.FOOD_TYPE, B.FAVORITES, B.ADDRESS, ROUND(AVG(A.REVIEW_SCORE),2) AS SCORE
+FROM REST_REVIEW AS A
+JOIN REST_INFO AS B
+ON A.REST_ID = B.REST_ID
+GROUP BY B.REST_ID
+HAVING B.ADDRESS LIKE '서울%'
+ORDER BY SCORE DESC, FAVORITES DESC
+
+GROUP BY와 JOIN의 조건은 식당 ID로 하지만 식당의 이름을 호출해야 한다.
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+저자 별 카테고리 별 매출액 집계하기
+
+SELECT C.AUTHOR_ID, C.AUTHOR_NAME, C.CATEGORY, (SUM(BS.SALES)* C.PRICE) AS TOTAL_SALES
+FROM BOOK_SALES AS BS
+JOIN (SELECT B.BOOK_ID, B.CATEGORY, B.AUTHOR_ID, A.AUTHOR_NAME, B.PRICE
+    FROM BOOK AS B
+    JOIN AUTHOR AS A
+    ON B.AUTHOR_ID = A.AUTHOR_ID) AS C
+ON BS.BOOK_ID = C.BOOK_ID
+WHERE DATE_FORMAT(SALES_DATE,'%Y-%m') = '2022-01'
+GROUP BY C.AUTHOR_ID, C.CATEGORY
+ORDER BY AUTHOR_ID, CATEGORY DESC
+
+결과가 다르게 나오는데 책값이 변할 수 있는지 확인해 봐야 할 것 같다.
+
+SUM(BS.SALES * C.PRICE) 으로 바꿨더니 통과가 됐다. TOTAL_SALES를 확인해 봐야 겠다.
+
+AUTHOR_ID	AUTHOR_NAME	CATEGORY	TOTAL_SALES
+1	홍길동	인문	561000
+1	홍길동	경제	1107000
+2	김영호	소설	450000
+3	김수진	생활	817000
+3	김수진	기술	1523000
+
+(SUM(BS.SALES)* C.PRICE)
+
+AUTHOR_ID	AUTHOR_NAME	CATEGORY	TOTAL_SALES
+1	홍길동	인문	561000
+1	홍길동	경제	1212000
+2	김영호	소설	450000
+3	김수진	생활	817000
+3	김수진	기술	1661000
+
+홍길동 경제와 김수진 생활의 가격이 다르게 나왔다.
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+년, 월, 성별 별 상품 구매 회원 수 구하기
+
+SELECT YEAR(OS.SALES_DATE) AS YEAR, MONTH(OS.SALES_DATE) AS MONTH, UI.GENDER, COUNT(OS.USER_ID) AS USERS
+FROM ONLINE_SALE AS OS
+JOIN USER_INFO AS UI
+ON OS.USER_ID = UI.USER_ID
+WHERE UI.GENDER IS NOT NULL
+GROUP BY YEAR, MONTH, GENDER
+ORDER BY YEAR, MONTH, GENDER
+
+집계가 회원수르를 집계하는 것이므로 USER_ID수를 카운트 하면 될 것 같다.
+
+회원수는 총 200명이고 그 중 성별이 없는 데이터는 5개인 것으로 확인된다.
+
+중복된 USER_ID가 존재해서 그런 듯 싶다.
+
+SELECT YEAR(OS.SALES_DATE) AS YEAR, MONTH(OS.SALES_DATE) AS MONTH,  UI.GENDER, COUNT(DISTINCT(OS.USER_ID)) AS USERS
+FROM ONLINE_SALE AS OS
+JOIN USER_INFO AS UI ON OS.USER_ID = UI.USER_ID
+WHERE UI.GENDER IS NOT NULL
+GROUP BY YEAR, MONTH, GENDER
+ORDER BY YEAR, MONTH, GENDER
+
+COUNT(DISTINCT()) 로 변경하였다.
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+주문량이 많은 아이스크림들 조회하기
+
+두 테이블의 컬럼수가 다르다. JOIN해서 NULL인값들은 0으로 대체한 뒤에 더해야 할 것 같다.
+
+FIRST_HALF는 1,2,3,4,5,6,9
+JULY는 1,2,3,4,5,6,9,209 가 하나 더있다.
+
+SELECT A.FLAVOR
+FROM (SELECT SHIPMENT_ID, FLAVOR FROM FIRST_HALF
+    UNION 
+    SELECT SHIPMENT_ID, FLAVOR FROM JULY) AS A
+LEFT JOIN FIRST_HALF AS FH ON A.SHIPMENT_ID = FH.SHIPMENT_ID
+LEFT JOIN JULY AS J ON A.SHIPMENT_ID = J.SHIPMENT_ID
+ORDER BY (IFNULL(FH.TOTAL_ORDER,0) + J.TOTAL_ORDER) DESC LIMIT 3
+
+맛별로 더해야 한다. SHIPMENT_ID 별로 보는 것이 아니라
+
+-- 코드를 입력하세요
+SELECT A.FLAVOR
+FROM (SELECT SHIPMENT_ID, FLAVOR FROM FIRST_HALF
+    UNION 
+    SELECT SHIPMENT_ID, FLAVOR FROM JULY) AS A
+LEFT JOIN FIRST_HALF AS FH ON A.SHIPMENT_ID = FH.SHIPMENT_ID
+LEFT JOIN JULY AS J ON A.SHIPMENT_ID = J.SHIPMENT_ID
+GROUP BY A.FLAVOR
+ORDER BY SUM(IFNULL(J.TOTAL_ORDER,0) + IFNULL(FH.TOTAL_ORDER,0)) DESC LIMIT 3
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+연간 평가점수에 해당하는 평가 등급 및 성과금 조회하기
+
+SELECT A.EMP_NO, HE.EMP_NAME, A.GRADE,
+    CASE WHEN A.GRADE = 'S' THEN HE.SAL * 0.2
+    WHEN A.GRADE = 'A' THEN HE.SAL * 0.15
+    WHEN A.GRADE = 'B' THEN HE.SAL * 0.1
+    ELSE 0 END AS BONUS
+FROM (SELECT EMP_NO, 
+    CASE WHEN AVG(SCORE) >= 96 THEN 'S'
+    WHEN AVG(SCORE) < 96 AND AVG(SCORE) >= 90 THEN 'A'
+    WHEN AVG(SCORE) < 90 AND AVG(SCORE) >= 80 THEN 'B'
+    ELSE 'C' END AS GRADE
+    FROM HR_GRADE
+    GROUP BY EMP_NO) AS A
+JOIN HR_EMPLOYEES AS HE
+ON A.EMP_NO = HE.EMP_NO
+ORDER BY EMP_NO
+
+평균값 계산시에 ROUND를 하지 않아도 되는데 ROUND를 해서 원하는 값이 출력되지 않았다.
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+그룹별 조건에 맞는 식당 목록 출력하기
+
+SELECT C.MEMBER_NAME, A.REVIEW_TEXT, DATE_FORMAT(A.REVIEW_DATE,'%Y-%m-%d') AS REVIEW_DATE
+FROM REST_REVIEW AS A
+JOIN (SELECT MEMBER_ID, COUNT(*) AS COUNTS 
+    FROM REST_REVIEW
+    GROUP BY MEMBER_ID
+    ORDER BY COUNTS DESC LIMIT 1) AS B
+ON A.MEMBER_ID =  B.MEMBER_ID
+JOIN MEMBER_PROFILE AS C
+ON A.MEMBER_ID = C.MEMBER_ID
+ORDER BY REVIEW_DATE, REVIEW_TEXT
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+오프라인/온라인 판매 데이터 통합하기
+
+SELECT DATE_FORMAT(SALES_DATE,'%Y-%m-%d') AS SALES_DATE, PRODUCT_ID, USER_ID, SALES_AMOUNT
+FROM ONLINE_SALE
+WHERE DATE_FORMAT(SALES_DATE,'%Y-%m') = '2022-03'
+
+SELECT DATE_FORMAT(SALES_DATE,'%Y-%m-%d') AS SALES_DATE, PRODUCT_ID, SALES_AMOUNT
+FROM OFFLINE_SALE
+WHERE DATE_FORMAT(SALES_DATE,'%Y-%m') = '2022-03'
+
+두 테이블을 합치기 위해 NULL값으로 채워진 새로운 컬럼을 만들고자 한다.SELECT NULL AS USER_ID 로 컬럼을 만들고 UNION ALL을 사용해 보자.
+
+(SELECT DATE_FORMAT(SALES_DATE,'%Y-%m-%d') AS SALES_DATE, PRODUCT_ID, USER_ID, SALES_AMOUNT
+FROM ONLINE_SALE
+WHERE DATE_FORMAT(SALES_DATE,'%Y-%m') = '2022-03')
+UNION ALL
+(SELECT DATE_FORMAT(SALES_DATE,'%Y-%m-%d') AS SALES_DATE, PRODUCT_ID, NULL AS USER_ID, SALES_AMOUNT
+FROM OFFLINE_SALE
+WHERE DATE_FORMAT(SALES_DATE,'%Y-%m') = '2022-03')
+ORDER BY SALES_DATE, PRODUCT_ID, USER_ID
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+특정 세대의 대장균 찾기
+
+SELECT A.ID, A.PARENT_ID, B.PARENT_ID AS GRANDPARENT_ID FROM ECOLI_DATA AS A
+LEFT JOIN ECOLI_DATA AS B
+ON A.PARENT_ID = B.ID
+
+SELECT ID FROM ECOLI_DATA WHERE PARENT_ID IS NULL
+
+SELECT C.ID
+FROM ( SELECT A.ID, A.PARENT_ID, B.PARENT_ID AS GRANDPARENT_ID 
+    FROM ECOLI_DATA AS A
+    LEFT JOIN ECOLI_DATA AS B
+    ON A.PARENT_ID = B.ID
+    WHERE B.PARENT_ID IN (SELECT ID FROM ECOLI_DATA WHERE PARENT_ID IS NULL)) AS C
+ORDER BY C.ID
+
+PARENT_ID가 존재하지 않는 1세대가 조부모의 아이디와 같은 대장균을 출력하면 된다.
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+자동차 대여 기록 별 대여 금액 구하기
+
+SELECT A.HISTORY_ID, FLOOR(A.DATEDIFF * A.DAILY_FEE * (1- IFNULL(B.DISCOUNT_RATE,0)/100)) AS FEE
+FROM 
+(SELECT CRCRH.HISTORY_ID, CRCRH.CAR_ID, CRCC.CAR_TYPE, CRCC.DAILY_FEE, DATEDIFF(CRCRH.END_DATE, CRCRH.START_DATE) + 1 AS DATEDIFF,
+    CASE WHEN DATEDIFF(CRCRH.END_DATE, CRCRH.START_DATE) + 1 >= 90 THEN '90일 이상'
+    WHEN DATEDIFF(CRCRH.END_DATE, CRCRH.START_DATE) + 1 BETWEEN 30 AND 89 THEN '30일 이상'
+    WHEN DATEDIFF(CRCRH.END_DATE, CRCRH.START_DATE) + 1 BETWEEN 7 AND 29 THEN '7일 이상'
+    ELSE NULL END AS DURATION_TYPE
+FROM CAR_RENTAL_COMPANY_RENTAL_HISTORY AS CRCRH
+JOIN CAR_RENTAL_COMPANY_CAR AS CRCC ON CRCRH.CAR_ID = CRCC.CAR_ID
+WHERE CRCC.CAR_TYPE = '트럭') AS A
+LEFT JOIN CAR_RENTAL_COMPANY_DISCOUNT_PLAN AS B ON ((A.CAR_TYPE = B.CAR_TYPE) AND (A.DURATION_TYPE = B.DURATION_TYPE))
+ORDER BY FEE DESC, HISTORY_ID DESC
+
+날짜 계산시에 하루를 더해야 하는 것을 유의하자.
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+특정 기간동안 대여 가능한 자동차들의 대여비용 구하기
+
+대여가능 기간을 확인해 보려면 기간내에 대여 여부를 봐야 한다. 대여 기간은 START_DATE 부터 END_DATE로 표시되며, 기간 내에 2022년 11월이 포함되면 안된다.
+
+SELECT B.CAR_ID, B.CAR_TYPE, FLOOR(B.DAILY_FEE * 30 * (1-C.DISCOUNT_RATE*0.01)) AS FEE
+FROM CAR_RENTAL_COMPANY_CAR AS B
+LEFT JOIN (SELECT * FROM CAR_RENTAL_COMPANY_DISCOUNT_PLAN WHERE DURATION_TYPE = '30일 이상') AS C
+ON B.CAR_TYPE = C.CAR_TYPE
+WHERE B.CAR_ID IN (SELECT CAR_ID
+    FROM (SELECT *, 
+        CASE WHEN START_DATE > '2022-11-30' THEN 0
+        WHEN END_DATE < '2022-11-01' THEN 0
+        ELSE 1 END AS POSSIBILITY
+        FROM CAR_RENTAL_COMPANY_RENTAL_HISTORY) AS A
+    GROUP BY CAR_ID
+    HAVING SUM(POSSIBILITY) = 0)
+    AND FLOOR(B.DAILY_FEE * 30 * (1-C.DISCOUNT_RATE*0.01)) BETWEEN 500000 AND 2000000
+ORDER BY FEE DESC, CAR_TYPE, CAR_ID DESC
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+FrontEnd 개발자 찾기
+
+SELECT DISTINCT(D.ID), D.EMAIL, D.FIRST_NAME, D.LAST_NAME FROM DEVELOPERS AS D
+LEFT JOIN SKILLCODES  AS S ON S.CODE & D.SKILL_CODE
+WHERE S.CATEGORY = 'FRONT End'
+ORDER BY ID
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+언어별 개발자 분류하기
+
+GRADE가 존재하는 개발자를 분류해야 한다.
+A는 NAME 중에 PYTHON이 존재하고, CATEGORY 중에는 FRONT END가 존재하는 개발자
+B는 NAME에 C#이 존재하는 개발자
+C는 CATROGORY에 BACK END가 존재하는 개발자
+나머지는 GRADE가 존재하지 않는다.
+
+CATEGORY에는 BACK과 FRONT 두 종류만 존재하고 NAME은 다양하다.
+여기서 A등급의 조건이 까다로운 것이 PYTHON은 BACK END이기 때문에 항목을 따로 봐야 하는 것이 까다롭다.
+
+FRONT 와 BACK 두가지가 존재하는데 항상 FRONT만 탐색하므로 CATEGORY 컬럼에서 큰값이 FRONT인지 확인하면 될 듯 싶다.
+
+----------------------------------------------------------------------------------
+
+SELECT D.ID, S.NAME, S.CATEGORY FROM SKILLCODES AS S
+LEFT JOIN DEVELOPERS AS D ON D.SKILL_CODE & S.CODE
+ORDER BY D.ID
+
+SELECT ID, EMAIL
+FROM DEVELOPERS
+
+SELECT CODE 
+FROM SKILLCODES 
+WHERE NAME = 'PYTHON'
+
+SELECT CODE 
+FROM SKILLCODES 
+WHERE NAME = 'C#'
+
+SELECT NAME
+FROM SKILLCODES 
+WHERE NAME = 'FRONT END'
+
+SELECT CASE WHEN (SKILL_CODE & (SELECT CODE 
+            FROM SKILLCODES 
+            WHERE NAME = 'PYTHON') = (SELECT CODE 
+            FROM SKILLCODES 
+            WHERE NAME = 'PYTHON')) AND (SKILL_CODE & (SELECT CODE 
+            FROM SKILLCODES 
+            WHERE CATEGORY = 'FRONT END') = (SELECT CODE 
+            FROM SKILLCODES 
+            WHERE CATEGORY = 'FRONT END')) THEN 'A'
+        WHEN (SKILL_CODE & (SELECT CODE 
+            FROM SKILLCODES 
+            WHERE NAME = 'C#') = (SELECT CODE 
+            FROM SKILLCODES 
+            WHERE NAME = 'C#')) THEN 'B'
+        WHEN (SKILL_CODE & (SELECT CODE 
+            FROM SKILLCODES 
+            WHERE CATEGORY = 'FRONT END') = (SELECT CODE 
+            FROM SKILLCODES 
+            WHERE CATEGORY = 'FRONT END')) THEN 'C'
+        END AS GRADE,
+        ID, EMAIL
+FROM DEVELOPERS
+ORDER BY GRADE, ID
+
+SELECT D.ID, MAX(S.CATEGORY) MAX_CAT
+FROM DEVELOPERS AS D
+LEFT JOIN SKILLCODES AS S ON S.CODE & D.SKILL_CODE
+GROUP BY D.ID
+
+를 조인하여 MAX_CAT이 FRONT_END인지 확인하면 될 것 같다.
+
+GRADE 가 NULL이 아닌 값들만 반환하면 될 것 같다.
+
+SELECT *
+FROM (SELECT CASE WHEN (D.SKILL_CODE & (SELECT CODE 
+                FROM SKILLCODES 
+                WHERE NAME = 'PYTHON') = (SELECT CODE 
+                FROM SKILLCODES 
+                WHERE NAME = 'PYTHON')) AND B.MAX_CAT = 'FRONT END' THEN 'A'
+            WHEN (D.SKILL_CODE & (SELECT CODE 
+                FROM SKILLCODES 
+                WHERE NAME = 'C#') = (SELECT CODE 
+                FROM SKILLCODES 
+                WHERE NAME = 'C#')) THEN 'B'
+            WHEN B.MAX_CAT = 'FRONT END' THEN 'C'
+            END AS GRADE,
+            D.ID, D.EMAIL
+    FROM DEVELOPERS AS D
+    JOIN (SELECT D.ID, MAX(S.CATEGORY) MAX_CAT
+        FROM DEVELOPERS AS D
+        LEFT JOIN SKILLCODES AS S ON S.CODE & D.SKILL_CODE
+        GROUP BY D.ID) AS B ON D.ID = B.ID
+    ORDER BY GRADE, D.ID) AS C
+WHERE C.GRADE IS NOT NULL
+
+마지막 감싼 쿼리를 제거하지 않고 코드를 짜려고 해봤지만 CASE WHEN에서 NULL값을 제외하는 방법을 찾아내지 못했다.
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

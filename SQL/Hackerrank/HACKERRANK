@@ -1,0 +1,13 @@
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Binary Tree Nodes
+
+SELECT A.N, CASE WHEN A.P IS NULL THEN 'Root' 
+    WHEN COUNT(B.N) = 0 THEN 'Leaf'
+    ELSE 'Inner'
+    END AS ANSWER
+FROM BST A LEFT JOIN BST B ON A.N = B.P
+GROUP BY A.N, A.P
+ORDER BY A.N
+
+PROGRAMMERS와는 다르게 대소문자가 중요한듯 하다.
